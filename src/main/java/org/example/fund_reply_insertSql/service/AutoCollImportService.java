@@ -30,12 +30,15 @@ public class AutoCollImportService {
 
 	private final AutoCollMapper autoCollMapper;
 	private final ExecutorService importExecutor;
+	private final int maxRecordsPerFile;
 
 	public AutoCollImportService(AutoCollMapper autoCollMapper,
-			@Value("${autocoll.import.threads:8}") int importThreads) {
+			@Value("${autocoll.import.threads:8}") int importThreads,
+			@Value("${autocoll.import.max-records-per-file:5000}") int maxRecordsPerFile) {
 		this.autoCollMapper = autoCollMapper;
 		int threadCount = Math.max(1, importThreads);
 		this.importExecutor = Executors.newFixedThreadPool(threadCount);
+		this.maxRecordsPerFile = Math.max(1, maxRecordsPerFile);
 	}
 
 	public ImportSummary importFromLogFile(MultipartFile file) {
@@ -43,6 +46,9 @@ public class AutoCollImportService {
 		List<String> payloadList = extractRequestPayloads(content);
 		if (payloadList.isEmpty()) {
 			throw new IllegalArgumentException("日志中未找到有效通道请求报文");
+		}
+		if (payloadList.size() > maxRecordsPerFile) {
+			throw new IllegalArgumentException("单次最大处理条数为" + maxRecordsPerFile + "，当前文件为" + payloadList.size() + "条，请拆分后重试");
 		}
 
 		List<Future<AutoColl>> futures = new ArrayList<>(payloadList.size());
