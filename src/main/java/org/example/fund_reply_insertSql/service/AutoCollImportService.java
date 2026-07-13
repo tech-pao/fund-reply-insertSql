@@ -1,11 +1,21 @@
 package org.example.fund_reply_insertSql.service;
 
+import java.io.IOException;
 import java.nio.charset.StandardCharsets;
+import java.util.ArrayList;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
+import jakarta.annotation.PreDestroy;
 import org.example.fund_reply_insertSql.entity.AutoColl;
 import org.example.fund_reply_insertSql.mapper.AutoCollMapper;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -19,14 +29,47 @@ public class AutoCollImportService {
 	private static final Pattern TRAN_CODE_PATTERN = Pattern.compile("<TranCode>(.*?)</TranCode>", Pattern.DOTALL);
 
 	private final AutoCollMapper autoCollMapper;
+	private final ExecutorService importExecutor;
 
-	public AutoCollImportService(AutoCollMapper autoCollMapper) {
+	public AutoCollImportService(AutoCollMapper autoCollMapper,
+			@Value("${autocoll.import.threads:8}") int importThreads) {
 		this.autoCollMapper = autoCollMapper;
+		int threadCount = Math.max(1, importThreads);
+		this.importExecutor = Executors.newFixedThreadPool(threadCount);
 	}
 
-	public AutoColl importFromLogFile(MultipartFile file) {
+	public ImportSummary importFromLogFile(MultipartFile file) {
 		String content = readText(file);
-		String collreq = extractRequestPayload(content);
+		List<String> payloadList = extractRequestPayloads(content);
+		if (payloadList.isEmpty()) {
+			throw new IllegalArgumentException("日志中未找到有效通道请求报文");
+		}
+
+		List<Future<AutoColl>> futures = new ArrayList<>(payloadList.size());
+		for (String payload : payloadList) {
+			futures.add(importExecutor.submit(() -> insertOne(payload)));
+		}
+
+		int success = 0;
+		int failed = 0;
+		List<String> pkidList = new ArrayList<>();
+		Map<Integer, String> errorMap = new LinkedHashMap<>();
+
+		for (int i = 0; i < futures.size(); i++) {
+			try {
+				AutoColl inserted = futures.get(i).get();
+				success++;
+				pkidList.add(inserted.getPkid());
+			} catch (Exception ex) {
+				failed++;
+				errorMap.put(i + 1, rootMessage(ex));
+			}
+		}
+
+		return new ImportSummary(payloadList.size(), success, failed, pkidList, errorMap);
+	}
+
+	private AutoColl insertOne(String collreq) {
 		String serviceCode = extractTagValue(collreq, SERVICE_CODE_PATTERN);
 		String serviceScene = extractTagValue(collreq, SERVICE_SCENE_PATTERN);
 		String method = extractTagValue(collreq, TRANS_CODE_PATTERN);
@@ -51,22 +94,34 @@ public class AutoCollImportService {
 
 		try {
 			return new String(file.getBytes(), StandardCharsets.UTF_8);
-		} catch (Exception ex) {
+		} catch (IOException ex) {
 			throw new IllegalArgumentException("读取文件失败", ex);
 		}
 	}
 
-	private String extractRequestPayload(String text) {
-		int markerIndex = text.indexOf(REQUEST_MARKER);
-		if (markerIndex < 0) {
-			throw new IllegalArgumentException("日志中未找到“通道请求报文：”标记");
+	private List<String> extractRequestPayloads(String text) {
+		List<Integer> markerIndexes = new ArrayList<>();
+		int from = 0;
+		while (true) {
+			int idx = text.indexOf(REQUEST_MARKER, from);
+			if (idx < 0) {
+				break;
+			}
+			markerIndexes.add(idx);
+			from = idx + REQUEST_MARKER.length();
 		}
 
-		String payload = text.substring(markerIndex + REQUEST_MARKER.length()).trim();
-		if (payload.isEmpty()) {
-			throw new IllegalArgumentException("通道请求报文内容为空");
+		List<String> payloadList = new ArrayList<>();
+		for (int i = 0; i < markerIndexes.size(); i++) {
+			int start = markerIndexes.get(i) + REQUEST_MARKER.length();
+			int end = (i + 1 < markerIndexes.size()) ? markerIndexes.get(i + 1) : text.length();
+			String payload = text.substring(start, end).trim();
+			if (!payload.isEmpty()) {
+				payloadList.add(payload);
+			}
 		}
-		return payload;
+
+		return payloadList;
 	}
 
 	private String extractTagValue(String xml, Pattern pattern) {
@@ -79,5 +134,23 @@ public class AutoCollImportService {
 
 	private String nullToEmpty(String value) {
 		return value == null ? "" : value;
+	}
+
+	private String rootMessage(Exception ex) {
+		Throwable cause = ex;
+		while (cause.getCause() != null) {
+			cause = cause.getCause();
+		}
+		String message = cause.getMessage();
+		return message == null ? "未知错误" : message;
+	}
+
+	@PreDestroy
+	public void shutdownExecutor() {
+		importExecutor.shutdown();
+	}
+
+	public record ImportSummary(int total, int success, int failed, List<String> pkids,
+			Map<Integer, String> errors) {
 	}
 }

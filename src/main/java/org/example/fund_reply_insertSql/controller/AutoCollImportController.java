@@ -3,8 +3,8 @@ package org.example.fund_reply_insertSql.controller;
 import java.util.LinkedHashMap;
 import java.util.Map;
 
-import org.example.fund_reply_insertSql.entity.AutoColl;
 import org.example.fund_reply_insertSql.service.AutoCollImportService;
+import org.example.fund_reply_insertSql.service.AutoCollImportService.ImportSummary;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -26,12 +26,14 @@ public class AutoCollImportController {
 	@PostMapping("/import-log")
 	public ResponseEntity<Map<String, Object>> importLog(@RequestParam("file") MultipartFile file) {
 		try {
-			AutoColl inserted = autoCollImportService.importFromLogFile(file);
+			ImportSummary summary = autoCollImportService.importFromLogFile(file);
 			Map<String, Object> result = new LinkedHashMap<>();
 			result.put("success", true);
-			result.put("pkid", inserted.getPkid());
-			result.put("txncode", inserted.getTxncode());
-			result.put("method", inserted.getMethod());
+			result.put("total", summary.total());
+			result.put("successCount", summary.success());
+			result.put("failedCount", summary.failed());
+			result.put("pkids", summary.pkids());
+			result.put("errors", summary.errors());
 			return ResponseEntity.ok(result);
 		} catch (IllegalArgumentException ex) {
 			Map<String, Object> result = new LinkedHashMap<>();
