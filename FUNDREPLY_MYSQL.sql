@@ -32,3 +32,7 @@ CREATE TABLE IF NOT EXISTS AUTOCOLL (
 
 -- Optional index: create only after data import if you still need this access path.
 -- CREATE INDEX fundreplyIDXTXNCODE ON AUTOCOLL (TXNCODE);
+
+-- Set default blank value for TRACEID on existing table
+ALTER TABLE AUTOCOLL
+  MODIFY COLUMN TRACEID VARCHAR(200) NOT NULL DEFAULT ' ' COMMENT '全局流水';

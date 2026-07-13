@@ -2,6 +2,8 @@ package org.example.fund_reply_insertSql.service;
 
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -27,6 +29,7 @@ public class AutoCollImportService {
 	private static final Pattern SERVICE_SCENE_PATTERN = Pattern.compile("<ServiceScene>(.*?)</ServiceScene>", Pattern.DOTALL);
 	private static final Pattern TRANS_CODE_PATTERN = Pattern.compile("<TransCode>(.*?)</TransCode>", Pattern.DOTALL);
 	private static final Pattern TRAN_CODE_PATTERN = Pattern.compile("<TranCode>(.*?)</TranCode>", Pattern.DOTALL);
+	private static final DateTimeFormatter COLL_TIME_FORMATTER = DateTimeFormatter.ofPattern("yyyy-MM-dd hh:mm:ss");
 
 	private final AutoCollMapper autoCollMapper;
 	private final ExecutorService importExecutor;
@@ -88,6 +91,7 @@ public class AutoCollImportService {
 		autoColl.setCollreq(collreq);
 		autoColl.setTxncode(nullToEmpty(serviceCode) + nullToEmpty(serviceScene));
 		autoColl.setMethod(method);
+		autoColl.setColltime(LocalDateTime.now().format(COLL_TIME_FORMATTER));
 
 		autoCollMapper.insert(autoColl);
 		return autoColl;
