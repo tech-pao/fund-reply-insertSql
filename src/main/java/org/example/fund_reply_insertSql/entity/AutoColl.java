@@ -1,5 +1,6 @@
 package org.example.fund_reply_insertSql.entity;
 
+import com.baomidou.mybatisplus.annotation.IdType;
 import com.baomidou.mybatisplus.annotation.TableField;
 import com.baomidou.mybatisplus.annotation.TableId;
 import com.baomidou.mybatisplus.annotation.TableName;
@@ -12,7 +13,7 @@ public class AutoColl {
 	/**
 	 * 唯一主键编号
 	 */
-	@TableId("PKID")
+	@TableId(value = "PKID", type = IdType.ASSIGN_ID)
 	private String pkid;
 
 	/**
