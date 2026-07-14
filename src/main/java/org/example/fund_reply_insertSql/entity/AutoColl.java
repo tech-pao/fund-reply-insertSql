@@ -13,7 +13,7 @@ public class AutoColl {
 	/**
 	 * 唯一主键编号
 	 */
-	@TableId(value = "PKID", type = IdType.ASSIGN_ID)
+	@TableId(value = "PKID", type = IdType.INPUT)
 	private String pkid;
 
 	/**

@@ -28,8 +28,9 @@ public class AutoCollImportService {
 	private static final String REQUEST_MARKER = "通道请求报文：";
 	private static final Pattern SERVICE_CODE_PATTERN = Pattern.compile("<ServiceCode>(.*?)</ServiceCode>", Pattern.DOTALL);
 	private static final Pattern SERVICE_SCENE_PATTERN = Pattern.compile("<ServiceScene>(.*?)</ServiceScene>", Pattern.DOTALL);
+	private static final Pattern CONSUMER_SEQ_NO_PATTERN = Pattern.compile("<ConsumerSeqNo>(.*?)</ConsumerSeqNo>",
+			Pattern.DOTALL);
 	private static final Pattern TRANS_CODE_PATTERN = Pattern.compile("<TransCode>(.*?)</TransCode>", Pattern.DOTALL);
-	private static final Pattern TRAN_CODE_PATTERN = Pattern.compile("<TranCode>(.*?)</TranCode>", Pattern.DOTALL);
 	private static final Pattern XML_PAYLOAD_PATTERN = Pattern.compile("(<\\?xml[^>]*\\?>.*?</service>)",
 			Pattern.DOTALL | Pattern.CASE_INSENSITIVE);
 	private static final DateTimeFormatter COLL_TIME_FORMATTER = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
@@ -82,15 +83,17 @@ public class AutoCollImportService {
 	}
 
 	private AutoColl insertOne(String collreq) {
+		String pkid = extractTagValue(collreq, CONSUMER_SEQ_NO_PATTERN);
 		String serviceCode = extractTagValue(collreq, SERVICE_CODE_PATTERN);
 		String serviceScene = extractTagValue(collreq, SERVICE_SCENE_PATTERN);
 		String method = extractTagValue(collreq, TRANS_CODE_PATTERN);
 
-		if (method == null) {
-			method = extractTagValue(collreq, TRAN_CODE_PATTERN);
+		if (pkid == null || pkid.isBlank()) {
+			throw new IllegalArgumentException("报文缺少ConsumerSeqNo，无法作为PKID入库");
 		}
 
 		AutoColl autoColl = new AutoColl();
+		autoColl.setPkid(pkid);
 		autoColl.setCollreq(collreq);
 		autoColl.setTxncode(nullToEmpty(serviceCode) + nullToEmpty(serviceScene));
 		autoColl.setMethod(method);
