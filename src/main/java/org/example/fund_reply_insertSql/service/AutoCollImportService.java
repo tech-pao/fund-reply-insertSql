@@ -30,6 +30,8 @@ public class AutoCollImportService {
 	private static final Pattern SERVICE_SCENE_PATTERN = Pattern.compile("<ServiceScene>(.*?)</ServiceScene>", Pattern.DOTALL);
 	private static final Pattern TRANS_CODE_PATTERN = Pattern.compile("<TransCode>(.*?)</TransCode>", Pattern.DOTALL);
 	private static final Pattern TRAN_CODE_PATTERN = Pattern.compile("<TranCode>(.*?)</TranCode>", Pattern.DOTALL);
+	private static final Pattern XML_PAYLOAD_PATTERN = Pattern.compile("(<\\?xml[^>]*\\?>.*?</service>)",
+			Pattern.DOTALL | Pattern.CASE_INSENSITIVE);
 	private static final DateTimeFormatter COLL_TIME_FORMATTER = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
 
 	private final AutoCollMapper autoCollMapper;
@@ -126,13 +128,23 @@ public class AutoCollImportService {
 		for (int i = 0; i < markerIndexes.size(); i++) {
 			int start = markerIndexes.get(i) + REQUEST_MARKER.length();
 			int end = (i + 1 < markerIndexes.size()) ? markerIndexes.get(i + 1) : text.length();
-			String payload = text.substring(start, end).trim();
+			String section = text.substring(start, end);
+			String payload = extractXmlPayload(section);
 			if (!payload.isEmpty()) {
 				payloadList.add(payload);
 			}
 		}
 
 		return payloadList;
+	}
+
+	private String extractXmlPayload(String section) {
+		Matcher xmlMatcher = XML_PAYLOAD_PATTERN.matcher(section);
+		if (xmlMatcher.find()) {
+			return xmlMatcher.group(1).trim();
+		}
+
+		return section.trim();
 	}
 
 	private String extractTagValue(String xml, Pattern pattern) {
