@@ -1,7 +1,7 @@
 package org.example.fund_reply_insertSql.service;
 
 import java.io.IOException;
-import java.nio.charset.StandardCharsets;
+import java.nio.charset.Charset;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
@@ -24,6 +24,7 @@ import org.springframework.web.multipart.MultipartFile;
 @Service
 public class AutoCollImportService {
 
+	private static final Charset LOG_FILE_CHARSET = Charset.forName("GBK");
 	private static final String REQUEST_MARKER = "通道请求报文：";
 	private static final Pattern SERVICE_CODE_PATTERN = Pattern.compile("<ServiceCode>(.*?)</ServiceCode>", Pattern.DOTALL);
 	private static final Pattern SERVICE_SCENE_PATTERN = Pattern.compile("<ServiceScene>(.*?)</ServiceScene>", Pattern.DOTALL);
@@ -103,7 +104,7 @@ public class AutoCollImportService {
 		}
 
 		try {
-			return new String(file.getBytes(), StandardCharsets.UTF_8);
+			return new String(file.getBytes(), LOG_FILE_CHARSET);
 		} catch (IOException ex) {
 			throw new IllegalArgumentException("读取文件失败", ex);
 		}
