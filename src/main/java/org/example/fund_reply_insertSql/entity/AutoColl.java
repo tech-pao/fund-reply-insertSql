@@ -7,7 +7,7 @@ import com.baomidou.mybatisplus.annotation.TableName;
 import lombok.Data;
 
 @Data
-@TableName("AUTOCOLL")
+@TableName("AUTO_COLL")
 public class AutoColl {
 
 	/**
