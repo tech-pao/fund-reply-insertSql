@@ -1,6 +1,6 @@
 -- MySQL initialization script for fundreply
--- Source DDL used quoted names inconsistently: "AUTO COLL" vs AUTOCOLL.
--- This script uses AUTOCOLL as the final table name to match the indexes and comments.
+-- Source DDL used quoted names inconsistently: "AUTO COLL" vs AUTO_COLL.
+-- This script uses AUTO_COLL as the final table name to match the indexes and comments.
 
 CREATE DATABASE IF NOT EXISTS fundreply
   DEFAULT CHARACTER SET utf8mb4
@@ -14,7 +14,7 @@ FLUSH PRIVILEGES;
 
 USE fundreply;
 
-CREATE TABLE IF NOT EXISTS AUTOCOLL (
+CREATE TABLE IF NOT EXISTS AUTO_COLL (
   PKID VARCHAR(200) NOT NULL COMMENT '唯一主键编号',
     TRACEID VARCHAR(200) NOT NULL COMMENT '全局流水',
     COLLREQ LONGTEXT COMMENT '采集请求报文',
@@ -26,13 +26,13 @@ CREATE TABLE IF NOT EXISTS AUTOCOLL (
     METHOD VARCHAR(500) COMMENT '接口方法',
     SERVICENAME VARCHAR(500) COMMENT '微服务名称',
     PRIMARY KEY (PKID),
-    INDEX fundreplyAUTOCOLLMIX (COLLTIME, PKID, TRACEID),
+    INDEX fundreplyAUTO_COLLMIX (COLLTIME, PKID, TRACEID),
     INDEX fundreplyIDXTRACEID (TRACEID)
 ) COMMENT='流量采集表';
 
 -- Optional index: create only after data import if you still need this access path.
--- CREATE INDEX fundreplyIDXTXNCODE ON AUTOCOLL (TXNCODE);
+-- CREATE INDEX fundreplyIDXTXNCODE ON AUTO_COLL (TXNCODE);
 
 -- Set default blank value for TRACEID on existing table
-ALTER TABLE AUTOCOLL
+ALTER TABLE AUTO_COLL
   MODIFY COLUMN TRACEID VARCHAR(200) NOT NULL DEFAULT ' ' COMMENT '全局流水';

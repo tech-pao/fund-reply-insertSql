@@ -95,10 +95,11 @@ public class AutoCollImportService {
 		AutoColl autoColl = new AutoColl();
 		autoColl.setPkid(pkid);
 		autoColl.setCollreq(collreq);
+		autoColl.setTraceid(" ");
 		autoColl.setTxncode(nullToEmpty(serviceCode) + nullToEmpty(serviceScene));
 		autoColl.setMethod(method);
 		autoColl.setColltime(LocalDateTime.now().format(COLL_TIME_FORMATTER));
-
+		autoColl.setServicename(" ");
 		autoCollMapper.insert(autoColl);
 		return autoColl;
 	}
