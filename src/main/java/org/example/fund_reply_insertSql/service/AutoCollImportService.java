@@ -16,6 +16,8 @@ import java.util.regex.Pattern;
 
 import jakarta.annotation.PreDestroy;
 import org.example.fund_reply_insertSql.entity.AutoColl;
+import org.example.fund_reply_insertSql.entity.AutoCollFail;
+import org.example.fund_reply_insertSql.mapper.AutoCollFailMapper;
 import org.example.fund_reply_insertSql.mapper.AutoCollMapper;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
@@ -36,13 +38,16 @@ public class AutoCollImportService {
 	private static final DateTimeFormatter COLL_TIME_FORMATTER = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
 
 	private final AutoCollMapper autoCollMapper;
+	private final AutoCollFailMapper autoCollFailMapper;
 	private final ExecutorService importExecutor;
 	private final int maxRecordsPerFile;
 
 	public AutoCollImportService(AutoCollMapper autoCollMapper,
+			AutoCollFailMapper autoCollFailMapper,
 			@Value("${autocoll.import.threads:8}") int importThreads,
 			@Value("${autocoll.import.max-records-per-file:5000}") int maxRecordsPerFile) {
 		this.autoCollMapper = autoCollMapper;
+		this.autoCollFailMapper = autoCollFailMapper;
 		int threadCount = Math.max(1, importThreads);
 		this.importExecutor = Executors.newFixedThreadPool(threadCount);
 		this.maxRecordsPerFile = Math.max(1, maxRecordsPerFile);
@@ -87,8 +92,18 @@ public class AutoCollImportService {
 		String serviceCode = extractTagValue(collreq, SERVICE_CODE_PATTERN);
 		String serviceScene = extractTagValue(collreq, SERVICE_SCENE_PATTERN);
 		String method = extractTagValue(collreq, TRANS_CODE_PATTERN);
+		String colltime = LocalDateTime.now().format(COLL_TIME_FORMATTER);
+		String txncode = nullToEmpty(serviceCode) + nullToEmpty(serviceScene);
 
 		if (pkid == null || pkid.isBlank()) {
+			AutoCollFail autoCollFail = new AutoCollFail();
+			autoCollFail.setCollreq(collreq);
+			autoCollFail.setTraceid(" ");
+			autoCollFail.setTxncode(txncode);
+			autoCollFail.setMethod(method);
+			autoCollFail.setColltime(colltime);
+			autoCollFail.setServicename(" ");
+			autoCollFailMapper.insert(autoCollFail);
 			throw new IllegalArgumentException("报文缺少ConsumerSeqNo，无法作为PKID入库");
 		}
 
@@ -96,9 +111,9 @@ public class AutoCollImportService {
 		autoColl.setPkid(pkid);
 		autoColl.setCollreq(collreq);
 		autoColl.setTraceid(" ");
-		autoColl.setTxncode(nullToEmpty(serviceCode) + nullToEmpty(serviceScene));
+		autoColl.setTxncode(txncode);
 		autoColl.setMethod(method);
-		autoColl.setColltime(LocalDateTime.now().format(COLL_TIME_FORMATTER));
+		autoColl.setColltime(colltime);
 		autoColl.setServicename(" ");
 		autoCollMapper.insert(autoColl);
 		return autoColl;
